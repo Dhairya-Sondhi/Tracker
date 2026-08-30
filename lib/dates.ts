@@ -1,0 +1,10 @@
+const zone="Asia/Kolkata";
+export const indiaDateKey=(date=new Date())=>new Intl.DateTimeFormat("en-CA",{year:"numeric",month:"2-digit",day:"2-digit",timeZone:zone}).format(date);
+const asUtc=(key:string)=>new Date(`${key}T12:00:00Z`);
+export const addDays=(key:string,days:number)=>{const date=asUtc(key);date.setUTCDate(date.getUTCDate()+days);return indiaDateKey(date)};
+export const addMonths=(key:string,months:number)=>{const date=asUtc(key);date.setUTCDate(1);date.setUTCMonth(date.getUTCMonth()+months);return indiaDateKey(date)};
+export const weekDates=(anchor=indiaDateKey())=>{const date=asUtc(anchor),offset=(date.getUTCDay()+6)%7;date.setUTCDate(date.getUTCDate()-offset);return Array.from({length:7},(_,index)=>addDays(indiaDateKey(date),index))};
+export const monthDates=(anchor=indiaDateKey())=>{const date=asUtc(anchor),year=date.getUTCFullYear(),month=date.getUTCMonth(),count=new Date(Date.UTC(year,month+1,0)).getUTCDate();return Array.from({length:count},(_,index)=>`${year}-${String(month+1).padStart(2,"0")}-${String(index+1).padStart(2,"0")}`)};
+export const nextWeekDates=()=>weekDates(addDays(indiaDateKey(),7));
+export const nextMonthDates=()=>monthDates(addMonths(indiaDateKey(),1));
+export const periodDates=(range:"week"|"month",anchor:string)=>range==="month"?monthDates(anchor):weekDates(anchor);

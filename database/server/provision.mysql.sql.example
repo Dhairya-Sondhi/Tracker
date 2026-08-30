@@ -1,0 +1,26 @@
+-- Run from a trusted MySQL administrator session after replacing every __PLACEHOLDER__.
+-- On managed MySQL, create the database/users in the provider console when CREATE USER is restricted.
+
+CREATE DATABASE IF NOT EXISTS `__DB_NAME__`
+  CHARACTER SET utf8mb4
+  COLLATE utf8mb4_unicode_ci;
+
+CREATE USER IF NOT EXISTS '__APP_USER__'@'__APP_HOST__'
+  IDENTIFIED BY '__APP_PASSWORD__'
+  REQUIRE SSL;
+
+CREATE USER IF NOT EXISTS '__MIGRATION_USER__'@'__MIGRATION_HOST__'
+  IDENTIFIED BY '__MIGRATION_PASSWORD__'
+  REQUIRE SSL;
+
+GRANT SELECT, INSERT, UPDATE, DELETE
+  ON `__DB_NAME__`.*
+  TO '__APP_USER__'@'__APP_HOST__';
+
+GRANT SELECT, INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, INDEX, REFERENCES, TRIGGER, CREATE VIEW, SHOW VIEW
+  ON `__DB_NAME__`.*
+  TO '__MIGRATION_USER__'@'__MIGRATION_HOST__';
+
+-- Confirm the effective privileges before deploying.
+SHOW GRANTS FOR '__APP_USER__'@'__APP_HOST__';
+SHOW GRANTS FOR '__MIGRATION_USER__'@'__MIGRATION_HOST__';
