@@ -12,7 +12,7 @@ export const monthlyData = [
 
 function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: Array<{value:number;name:string}>; label?: string }) {
   if (!active || !payload?.length) return null;
-  return <div className="rounded-xl border border-white/10 bg-[#15131c]/95 px-3 py-2 text-white shadow-xl backdrop-blur-xl"><p className="mb-1 text-[9px] uppercase tracking-widest text-white/45">{label}</p>{payload.map(item=><p key={item.name} className="text-xs font-semibold">{item.value}% <span className="font-normal text-white/45">{item.name}</span></p>)}</div>;
+  return <div className="rounded-xl border border-white/10 bg-surface-raised/95 px-3 py-2 text-white shadow-xl backdrop-blur-xl"><p className="mb-1 text-[9px] uppercase tracking-widest text-white/45">{label}</p>{payload.map(item=><p key={item.name} className="text-xs font-semibold">{item.value}% <span className="font-normal text-white/45">{item.name}</span></p>)}</div>;
 }
 const axis = { fill:"currentColor", fontSize:10, fontWeight:600 };
 const heatmapDateFormatter = new Intl.DateTimeFormat("en-GB", { day:"numeric", month:"short", year:"numeric", timeZone:"UTC" });
@@ -37,5 +37,5 @@ export function ActivityHeatmap({ compact=false, dark=false }: {compact?:boolean
 
 export function ScoreRing({score=82,label="Life score",size=180}:{score?:number;label?:string;size?:number}) {
   const r=72,c=2*Math.PI*r;
-  return <div className="relative grid place-items-center" style={{width:size,height:size}}><svg viewBox="0 0 180 180" className="absolute size-full -rotate-90"><circle cx="90" cy="90" r={r} fill="none" stroke="currentColor" className="text-white/10" strokeWidth="8"/><circle cx="90" cy="90" r={r} fill="none" stroke="#9C7CFF" strokeWidth="8" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c*(1-score/100)} className="analytics-ring"/></svg><div className="text-center"><strong className="text-4xl tracking-[-.06em]">{score}</strong><span className="block text-[9px] font-bold uppercase tracking-[.18em] opacity-50">{label}</span></div></div>;
+  return <div className="relative grid place-items-center" style={{width:size,height:size}}><svg viewBox="0 0 180 180" className="absolute size-full -rotate-90"><circle cx="90" cy="90" r={r} fill="none" stroke="currentColor" className="text-line" strokeWidth="8"/><circle cx="90" cy="90" r={r} fill="none" stroke="#9C7CFF" strokeWidth="8" strokeLinecap="round" strokeDasharray={c} strokeDashoffset={c*(1-score/100)} className="analytics-ring"/></svg><div className="text-center"><strong className="text-4xl tracking-[-.06em]">{score}</strong><span className="block text-[9px] font-bold uppercase tracking-[.18em] opacity-50">{label}</span></div></div>;
 }

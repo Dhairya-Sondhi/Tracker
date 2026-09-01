@@ -7,11 +7,17 @@ export function useTheme() {
   const [theme, setThemeState] = useState<Theme>("light");
 
   useEffect(() => {
-    const saved = localStorage.getItem("form-theme") as Theme | null;
-    const preferred = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
-    const nextTheme = saved ?? preferred;
-    setThemeState(nextTheme);
-    document.documentElement.dataset.theme = nextTheme;
+    const saved = localStorage.getItem("form-theme");
+    const media = window.matchMedia("(prefers-color-scheme: dark)");
+    const apply = () => {
+      const preferred:Theme = media.matches ? "dark" : "light";
+      const nextTheme:Theme = saved === "dark" || saved === "light" ? saved : preferred;
+      setThemeState(nextTheme);
+      document.documentElement.dataset.theme = nextTheme;
+    };
+    apply();
+    if (saved === "system") media.addEventListener("change", apply);
+    return () => media.removeEventListener("change", apply);
   }, []);
 
   const setTheme = (nextTheme: Theme) => {

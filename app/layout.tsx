@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: "A premium design foundation for personal growth dashboards.",
 };
 
-const themeScript = `(function(){try{var t=localStorage.getItem('form-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.dataset.theme=t||p}catch(e){}})()`;
+const themeScript = `(function(){try{var s=localStorage.getItem('form-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s==='system'?p:(s==='dark'||s==='light'?s:p);document.documentElement.dataset.theme=t}catch(e){}})()`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const nonce=(await headers()).get("x-nonce")??undefined;

@@ -9,6 +9,7 @@
   --color-muted: var(--muted);
   --color-subtle: var(--subtle);
   --color-line: var(--line);
+  --color-accent: var(--accent);
   --color-violet: #7356e8;
   --color-lavender: #9c7cff;
   --color-lilac: #d9ccff;
@@ -25,19 +26,20 @@
 }
 
 :root {
-  --canvas: #f8f7fb;
-  --surface: rgba(255, 255, 255, 0.62);
+  --canvas: #f4f2f8;
+  --surface: rgba(255, 255, 255, 0.9);
   --surface-raised: #ffffff;
   --ink: #0c0c10;
-  --muted: #686571;
-  --subtle: #8e8997;
-  --line: rgba(12, 12, 16, 0.1);
-  --shadow-soft-value: 0 18px 55px rgba(42, 35, 71, 0.08);
-  --positive: #77b69a;
-  --warning: #c6a36a;
-  --negative: #a86476;
-  --neutral: #9a8c7e;
-  --rest: #7188b7;
+  --muted: #57535f;
+  --subtle: #74707c;
+  --line: rgba(25, 20, 38, 0.14);
+  --accent: #6042c7;
+  --shadow-soft-value: 0 16px 45px rgba(44, 35, 72, 0.11), 0 2px 8px rgba(44, 35, 72, 0.05);
+  --positive: #39785b;
+  --warning: #8c682c;
+  --negative: #9d4058;
+  --neutral: #75695f;
+  --rest: #516b9b;
   color-scheme: light;
 }
 
@@ -49,7 +51,13 @@
   --muted: rgba(255,255,255,.72);
   --subtle: rgba(255,255,255,.54);
   --line: rgba(255, 255, 255, 0.1);
+  --accent: #b79cff;
   --shadow-soft-value: 0 18px 55px rgba(0, 0, 0, 0.22);
+  --positive: #77b69a;
+  --warning: #d0ae70;
+  --negative: #d38a9d;
+  --neutral: #b4a598;
+  --rest: #8ca4d3;
   color-scheme: dark;
 }
 
@@ -63,6 +71,37 @@ body {
   font-family: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   transition: background-color 300ms ease, color 300ms ease;
+}
+.workspace-ambient {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(115, 86, 232, 0.07), transparent 28%),
+    radial-gradient(circle at 88% 92%, rgba(109, 114, 216, 0.045), transparent 26%);
+}
+[data-theme="dark"] .workspace-ambient {
+  background:
+    radial-gradient(circle at 12% 8%, rgba(115, 86, 232, 0.12), transparent 28%),
+    radial-gradient(circle at 88% 92%, rgba(109, 114, 216, 0.08), transparent 26%);
+}
+
+/* Map the signed-in workspace's legacy white-alpha utilities to semantic ink
+   in light mode while preserving the existing dark-mode hierarchy. */
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] :is([class^="text-white/"], [class*=" text-white/"]) {
+  color: var(--muted) !important;
+}
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] [class~="text-white"] {
+  color: var(--ink) !important;
+}
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] :is([class^="border-white/"], [class*=" border-white/"]) {
+  border-color: var(--line) !important;
+}
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] :is([class^="bg-white/"], [class*=" bg-white/"]) {
+  background-color: var(--surface) !important;
+}
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] [class*="hover:bg-white/"]:hover {
+  background-color: color-mix(in srgb, var(--ink) 8%, transparent) !important;
+}
+:root:not([data-theme="dark"]) [data-app-theme="workspace"] [class*="hover:text-white"]:hover {
+  color: var(--ink) !important;
 }
 button, input, textarea, select { font: inherit; }
 button, a, select { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
