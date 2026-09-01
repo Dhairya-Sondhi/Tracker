@@ -108,12 +108,37 @@ button, a, select { -webkit-tap-highlight-color: transparent; touch-action: mani
 button:not(:disabled), a, select:not(:disabled) { cursor: pointer; }
 button[role="switch"] > span { left: .25rem; transform: translateX(0) !important; }
 button[role="switch"][aria-checked="true"] > span { transform: translateX(1.25rem) !important; }
+[data-app-theme="workspace"] main,
+[data-app-theme="workspace"] main > section,
+[data-app-theme="workspace"] main > section > article {
+  min-width: 0;
+  max-width: 100%;
+}
 ::selection { background: #d9ccff; color: #0c0c10; }
 @keyframes status-in { from { opacity:0; transform:translateY(-5px) scale(.97) } to { opacity:1; transform:none } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+}
+
+@media (max-width: 419px) {
+  [data-app-theme="workspace"] main > .sticky {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  [data-app-theme="workspace"] main > .sticky > button {
+    width: 100%;
+  }
+  [data-app-theme="workspace"] nav[aria-label="Settings sections"] > button,
+  [data-app-theme="workspace"] nav[aria-label="Settings sections"] > button > span {
+    min-width: 0;
+  }
+  [data-app-theme="workspace"] nav[aria-label="Settings sections"] > button > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 }
 
 @layer components {
