@@ -1,78 +1,51 @@
-import type { ResultSetHeader, RowDataPacket } from "mysql2";
-import { getDb } from "@/lib/db";
+import { assertSupabase,getSupabaseAdmin } from "@/lib/supabase/server";
 import type { UserRole } from "@/lib/auth/types";
 
-export type AdminUser = {
-  id:number; email:string; displayName:string|null; role:UserRole; isActive:boolean;
-  createdAt:string; updatedAt:string; lastLoginAt:string|null; lastSeenAt:string|null;
-  trackerCount:number; entryCount:number; completedCount:number;
-};
+export type AdminUser={id:number;email:string;displayName:string|null;role:UserRole;isActive:boolean;createdAt:string;updatedAt:string;lastLoginAt:string|null;lastSeenAt:string|null;trackerCount:number;entryCount:number;completedCount:number};
+export type AuditEvent={id:number;action:string;createdAt:string;actorName:string|null;targetName:string|null};
+export type AdminOverview={stats:{total:number;active:number;admins:number;newToday:number;signedInWeek:number};users:AdminUser[];events:AuditEvent[]};
 
-export type AuditEvent = {
-  id:number; action:string; createdAt:string; actorName:string|null; targetName:string|null;
-};
+type UserRow={id:number|string;email:string;display_name:string|null;role:UserRole;is_active:boolean;created_at:string;updated_at:string;last_login_at:string|null;last_seen_at:string|null};
+type EntryRow={user_id:number|string;status:string};
 
-export type AdminOverview = {
-  stats:{total:number;active:number;admins:number;newToday:number;signedInWeek:number};
-  users:AdminUser[];
-  events:AuditEvent[];
-};
-
-interface AdminUserRow extends RowDataPacket {
-  id:number; email:string; display_name:string|null; role:UserRole; is_active:number;
-  created_at:Date; updated_at:Date; last_login_at:Date|null; last_seen_at:Date|null;
-  tracker_count:number; entry_count:number; completed_count:number;
+function enrichUser(row:UserRow,trackerCounts:Map<number,number>,entryCounts:Map<number,number>,completedCounts:Map<number,number>):AdminUser{
+ const id=Number(row.id);
+ return {id,email:row.email,displayName:row.display_name,role:row.role,isActive:row.is_active,createdAt:row.created_at,updatedAt:row.updated_at,lastLoginAt:row.last_login_at,lastSeenAt:row.last_seen_at,trackerCount:trackerCounts.get(id)||0,entryCount:entryCounts.get(id)||0,completedCount:completedCounts.get(id)||0};
 }
 
-const iso=(date:Date|null)=>date?date.toISOString():null;
-const mapUser=(row:AdminUserRow):AdminUser=>({
-  id:Number(row.id),email:row.email,displayName:row.display_name,role:row.role,isActive:Boolean(row.is_active),
-  createdAt:row.created_at.toISOString(),updatedAt:row.updated_at.toISOString(),lastLoginAt:iso(row.last_login_at),lastSeenAt:iso(row.last_seen_at),
-  trackerCount:Number(row.tracker_count),entryCount:Number(row.entry_count),completedCount:Number(row.completed_count),
-});
+async function loadUsers():Promise<AdminUser[]>{
+ const supabase=getSupabaseAdmin();
+ const [usersResult,trackersResult,entriesResult]=await Promise.all([
+  supabase.from("users").select("id,email,display_name,role,is_active,created_at,updated_at,last_login_at,last_seen_at").order("created_at",{ascending:false}).limit(500),
+  supabase.from("trackers").select("user_id").limit(100000),
+  supabase.from("tracker_entries").select("user_id,status").limit(100000),
+ ]);
+ const users=assertSupabase(usersResult) as UserRow[],trackers=assertSupabase(trackersResult) as {user_id:number|string}[],entries=assertSupabase(entriesResult) as EntryRow[];
+ const trackerCounts=new Map<number,number>(),entryCounts=new Map<number,number>(),completedCounts=new Map<number,number>();
+ for(const row of trackers){const id=Number(row.user_id);trackerCounts.set(id,(trackerCounts.get(id)||0)+1)}
+ for(const row of entries){const id=Number(row.user_id);entryCounts.set(id,(entryCounts.get(id)||0)+1);if(row.status==="COMPLETE")completedCounts.set(id,(completedCounts.get(id)||0)+1)}
+ return users.map(row=>enrichUser(row,trackerCounts,entryCounts,completedCounts));
+}
 
 export async function getAdminOverview():Promise<AdminOverview>{
-  const db=getDb();
-  const [statsResult,usersResult,eventsResult]=await Promise.all([
-    db.query<(RowDataPacket&{total:number;active:number;admins:number;new_today:number;signed_in_week:number})[]>("SELECT COUNT(*) total, SUM(is_active = TRUE) active, SUM(role = 'ADMIN') admins, SUM(DATE(created_at) = CURRENT_DATE) new_today, SUM(last_login_at >= NOW() - INTERVAL 7 DAY) signed_in_week FROM users"),
-    db.query<AdminUserRow[]>("SELECT u.id,u.email,u.display_name,u.role,u.is_active,u.created_at,u.updated_at,u.last_login_at,u.last_seen_at,COUNT(DISTINCT t.id) tracker_count,COUNT(DISTINCT e.id) entry_count,COUNT(DISTINCT CASE WHEN e.status='COMPLETE' THEN e.id END) completed_count FROM users u LEFT JOIN trackers t ON t.user_id=u.id LEFT JOIN tracker_entries e ON e.user_id=u.id GROUP BY u.id ORDER BY u.created_at DESC LIMIT 500"),
-    db.query<(RowDataPacket&{id:number;action:string;created_at:Date;actor_name:string|null;target_name:string|null})[]>("SELECT a.id,a.action,a.created_at,COALESCE(actor.display_name,actor.email) actor_name,COALESCE(target.display_name,target.email) target_name FROM admin_audit_logs a LEFT JOIN users actor ON actor.id=a.actor_user_id LEFT JOIN users target ON target.id=a.target_user_id ORDER BY a.created_at DESC LIMIT 20"),
-  ]);
-  const stats=statsResult[0][0];
-  return {
-    stats:{total:Number(stats.total),active:Number(stats.active),admins:Number(stats.admins),newToday:Number(stats.new_today),signedInWeek:Number(stats.signed_in_week)},
-    users:usersResult[0].map(mapUser),
-    events:eventsResult[0].map(row=>({id:Number(row.id),action:row.action,createdAt:row.created_at.toISOString(),actorName:row.actor_name,targetName:row.target_name})),
-  };
+ const supabase=getSupabaseAdmin();
+ const [users,eventsResult]=await Promise.all([loadUsers(),supabase.from("admin_audit_logs").select("id,action,created_at,actor_user_id,target_user_id").order("created_at",{ascending:false}).limit(20)]);
+ const rawEvents=assertSupabase(eventsResult) as {id:number|string;action:string;created_at:string;actor_user_id:number|string|null;target_user_id:number|string|null}[];
+ const names=new Map(users.map(user=>[user.id,user.displayName||user.email]));
+ const today=new Date();today.setUTCHours(0,0,0,0);const weekAgo=Date.now()-7*24*60*60*1000;
+ return {stats:{total:users.length,active:users.filter(user=>user.isActive).length,admins:users.filter(user=>user.role==="ADMIN").length,newToday:users.filter(user=>Date.parse(user.createdAt)>=today.getTime()).length,signedInWeek:users.filter(user=>user.lastLoginAt&&Date.parse(user.lastLoginAt)>=weekAgo).length},users,events:rawEvents.map(row=>({id:Number(row.id),action:row.action,createdAt:row.created_at,actorName:row.actor_user_id===null?null:names.get(Number(row.actor_user_id))||null,targetName:row.target_user_id===null?null:names.get(Number(row.target_user_id))||null}))};
 }
 
-export async function getAdminUser(userId:number){
-  const [rows]=await getDb().query<AdminUserRow[]>("SELECT u.id,u.email,u.display_name,u.role,u.is_active,u.created_at,u.updated_at,u.last_login_at,u.last_seen_at,COUNT(DISTINCT t.id) tracker_count,COUNT(DISTINCT e.id) entry_count,COUNT(DISTINCT CASE WHEN e.status='COMPLETE' THEN e.id END) completed_count FROM users u LEFT JOIN trackers t ON t.user_id=u.id LEFT JOIN tracker_entries e ON e.user_id=u.id WHERE u.id=? GROUP BY u.id LIMIT 1",[userId]);
-  return rows[0]?mapUser(rows[0]):null;
-}
+export async function getAdminUser(userId:number){return (await loadUsers()).find(user=>user.id===userId)||null}
 
 export async function updateManagedUser(input:{actorId:number;targetId:number;role?:UserRole;isActive?:boolean}){
-  if(input.actorId===input.targetId)throw new Error("SELF_MANAGEMENT_NOT_ALLOWED");
-  const connection=await getDb().getConnection();
-  try{
-    await connection.beginTransaction();
-    const [activeAdmins]=await connection.query<RowDataPacket[]>("SELECT id FROM users WHERE role='ADMIN' AND is_active=TRUE ORDER BY id FOR UPDATE");
-    const [targetRows]=await connection.query<(RowDataPacket&{role:UserRole;is_active:number})[]>("SELECT role,is_active FROM users WHERE id=? LIMIT 1 FOR UPDATE",[input.targetId]);
-    const target=targetRows[0];if(!target)throw new Error("USER_NOT_FOUND");
-    const removesActiveAdmin=target.role==="ADMIN"&&Boolean(target.is_active)&&((input.role&&input.role!=="ADMIN")||input.isActive===false);
-    if(removesActiveAdmin&&activeAdmins.length<=1)throw new Error("LAST_ADMIN");
-    const updates:string[]=[];const values:Array<string|number|boolean>=[];
-    if(input.role){updates.push("role=?");values.push(input.role)}
-    if(typeof input.isActive==="boolean"){updates.push("is_active=?");values.push(input.isActive)}
-    if(!updates.length)throw new Error("NO_CHANGES");
-    updates.push("session_version=session_version+1");values.push(input.targetId);
-    await connection.execute<ResultSetHeader>(`UPDATE users SET ${updates.join(",")} WHERE id=?`,values);
-    await connection.execute("INSERT INTO admin_audit_logs (actor_user_id,target_user_id,action,metadata) VALUES (?,?,?,?)",[input.actorId,input.targetId,"USER_ACCESS_UPDATED",JSON.stringify({role:input.role,isActive:input.isActive})]);
-    await connection.commit();
-  }catch(error){await connection.rollback();throw error}finally{connection.release()}
-  return getAdminUser(input.targetId);
+ if(input.actorId===input.targetId)throw new Error("SELF_MANAGEMENT_NOT_ALLOWED");
+ if(input.role===undefined&&input.isActive===undefined)throw new Error("NO_CHANGES");
+ const {error}=await getSupabaseAdmin().rpc("update_managed_user",{p_actor_id:input.actorId,p_target_id:input.targetId,p_role:input.role??null,p_is_active:input.isActive??null});
+ if(error){for(const code of ["SELF_MANAGEMENT_NOT_ALLOWED","USER_NOT_FOUND","LAST_ADMIN"] as const)if(error.message.includes(code))throw new Error(code);throw new Error(`SUPABASE_QUERY_FAILED: ${error.message}`)}
+ return getAdminUser(input.targetId);
 }
 
 export async function recordAuditEvent(input:{actorId?:number|null;targetId?:number|null;action:string;metadata?:unknown}){
-  await getDb().execute("INSERT INTO admin_audit_logs (actor_user_id,target_user_id,action,metadata) VALUES (?,?,?,?)",[input.actorId??null,input.targetId??null,input.action,input.metadata===undefined?null:JSON.stringify(input.metadata)]);
+ assertSupabase(await getSupabaseAdmin().from("admin_audit_logs").insert({actor_user_id:input.actorId??null,target_user_id:input.targetId??null,action:input.action,metadata:input.metadata??null}).select("id").single());
 }

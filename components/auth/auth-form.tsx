@@ -11,7 +11,7 @@ import { AuthCard, AuthShell } from "@/components/auth/auth-shell";
 type Mode = "signin" | "signup";
 type FieldErrors = Partial<Record<"password" | "confirmPassword", string>>;
 
-export function AuthForm({ mode }: { mode: Mode }) {
+export function AuthForm({ mode,notice }: { mode: Mode;notice?:string }) {
   const router = useRouter(); const signup = mode === "signup";
   const [error, setError] = useState(""); const [fieldErrors, setFieldErrors] = useState<FieldErrors>({}); const [loading, setLoading] = useState(false);
   useEffect(() => { router.prefetch("/today"); if (!signup) router.prefetch("/admin"); }, [router, signup]);
@@ -26,7 +26,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
       const response = await fetch(`/api/auth/${mode}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: form.get("email"), password, displayName: form.get("displayName") }) });
       const data = await response.json().catch(() => ({}));
       if (!response.ok) { setError(safeError(mode, response.status, data?.message)); setLoading(false); return; }
-      const redirectTo = data?.redirectTo === "/admin" ? "/admin" : "/today";
+      const redirectTo = data?.redirectTo === "/admin" ? "/admin" : data?.redirectTo === "/signin" ? "/signin?message=check-email" : "/today";
       router.replace(redirectTo);
     } catch { setError(serverError(mode)); setLoading(false); }
   }
@@ -34,6 +34,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     <p className="text-xs font-bold uppercase tracking-[.16em] text-lavender">{signup ? "Your private workspace" : "Your space awaits"}</p>
     <h1 className="mt-3 text-[clamp(2.15rem,8vw,2.7rem)] font-semibold leading-[1.05] tracking-[-.055em]">{signup ? "Create your space." : "Welcome back."}</h1>
     <p className="mt-4 text-[15px] leading-7 text-white/70">{signup ? "A private place to plan, track, and understand your growth." : "Pick up where you left off."}</p>
+    {notice && <p className="mt-5 rounded-xl border border-emerald-300/20 bg-emerald-300/10 px-4 py-3 text-sm leading-6 text-emerald-100">{notice}</p>}
     <form onSubmit={submit} className="mt-8 space-y-5" aria-describedby={error ? "auth-error" : undefined} noValidate>
       {signup && <AuthField name="displayName" label="Name" placeholder="Alex" autoComplete="name" maxLength={100} />}
       <AuthField name="email" label="Email" placeholder="alex@email.com" type="email" autoComplete="email" inputMode="email" />

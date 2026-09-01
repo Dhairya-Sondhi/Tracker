@@ -16,31 +16,11 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    services:
-      mysql:
-        image: mysql:8.4
-        env:
-          MYSQL_ROOT_PASSWORD: root-test-password
-          MYSQL_DATABASE: form_ci
-        ports: ["3306:3306"]
-        options: >-
-          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot-test-password"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
     env:
-      DB_HOST: 127.0.0.1
-      DB_PORT: 3306
-      DB_NAME: form_ci
-      DB_USER: root
-      DB_PASSWORD: root-test-password
-      DB_MIGRATION_USER: root
-      DB_MIGRATION_PASSWORD: root-test-password
-      DB_SSL_MODE: disable
-      DB_CONNECTION_LIMIT: 5
-      DB_CONNECT_TIMEOUT_MS: 5000
-      AUTH_SECRET: ci-only-secret-that-is-long-enough-and-never-used-outside-ci-000000000000
       APP_URL: http://127.0.0.1:3000
+      SUPABASE_URL: https://example.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: sb_publishable_ci-placeholder
+      SUPABASE_SECRET_KEY: sb_secret_ci-placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -51,9 +31,5 @@ jobs:
       - run: npm audit --omit=dev
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm run db:migrate
-      - run: npm run db:status
-      - run: npm run db:verify-migrations
-      - run: npm run db:smoke
       - run: npm test
       - run: npm run build

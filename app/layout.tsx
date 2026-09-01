@@ -6,8 +6,9 @@ import "./globals.css";
 const manrope = Manrope({ subsets: ["latin"], variable: "--font-manrope", display: "swap" });
 
 export const metadata: Metadata = {
-  title: "Form — Personal growth, composed",
-  description: "A premium design foundation for personal growth dashboards.",
+  title: "Vlocity — Personal growth, composed",
+  description: "Build momentum with a personal dashboard for the habits, goals, and numbers that matter.",
+  applicationName: "Vlocity",
 };
 
 const themeScript = `(function(){try{var s=localStorage.getItem('form-theme');var p=window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';var t=s==='system'?p:(s==='dark'||s==='light'?s:p);document.documentElement.dataset.theme=t}catch(e){}})()`;

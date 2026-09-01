@@ -1,61 +1,42 @@
-# Supabase server setup
+# Supabase setup for Vlocity
 
-This project keeps its current MySQL data path and adds a separate, server-only
-Supabase client. Supabase uses PostgreSQL, so the existing `mysql2` queries cannot
-be redirected to Supabase without a deliberate schema and data-layer migration.
+Vlocity now uses Supabase Auth for credentials and browser sessions, and Supabase PostgreSQL for all application data. The application has no runtime MySQL dependency.
 
-## 1. Create and configure the project
+## Configure the project
 
-1. Create a project at <https://database.new>.
-2. In the Supabase dashboard, open **Project Settings > API Keys**.
-3. Copy the project URL and create/copy a server **secret** key (`sb_secret_...`).
-   A legacy `service_role` key also works, but new secret keys are preferred.
-4. Put the values in `.env.local`:
+1. Create or open the Supabase project.
+2. Run `database/supabase/001_vlocity.sql` once in the Supabase SQL editor.
+3. Copy the project URL, publishable key, and secret key from **Project Settings > API Keys**.
+4. Configure `.env.local` locally and the same variables in Vercel:
 
 ```text
+APP_URL=https://tracker-three-fawn.vercel.app
 SUPABASE_URL=https://your-project-ref.supabase.co
-SUPABASE_SECRET_KEY=sb_secret_your_server_key
+SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+SUPABASE_SECRET_KEY=sb_secret_...
 ```
 
-Restart `npm run dev` after changing environment variables.
+The secret key bypasses Row Level Security. Keep it server-only and never expose it through a `NEXT_PUBLIC_` variable, Client Component, log, screenshot, or source control.
 
-The secret key has elevated access and bypasses Row Level Security. Never put it
-in a `NEXT_PUBLIC_` variable, a Client Component, source control, screenshots, or
-logs. Every route that uses `getSupabaseAdmin()` must first authenticate and
-authorize the current application user.
+## Configure Auth redirects
 
-## 2. Verify the connection
-
-With the development server running, request:
+In **Authentication > URL Configuration**, set the Site URL to the production `APP_URL`. Add these redirect URLs:
 
 ```text
-GET http://localhost:3000/api/supabase/health
+http://localhost:3000/api/auth/callback
+https://tracker-three-fawn.vercel.app/api/auth/callback
 ```
 
-A valid URL and secret key return HTTP 200 with `supabase: "ready"`. Missing or
-invalid credentials return HTTP 503. The response never includes key or user data.
+Supabase sends signup-confirmation and password-recovery email. Customize those templates in **Authentication > Email Templates** if desired.
 
-## 3. Use Supabase from server code
+## Verify
 
-Use the client only in Route Handlers, Server Actions, Server Components, or
-other server modules:
+Run `npm run db:smoke`, then start the app and request `GET /api/health`. A configured schema returns HTTP 200 with `provider: "supabase"`. Finally verify signup, email confirmation, sign-in, password recovery, tracker writes, settings, and sign-out.
 
-```ts
-import { getSupabaseAdmin } from "@/lib/supabase/server";
+Bootstrap the first administrator after that account signs up:
 
-const user = await requireUser();
-if (!user) return NextResponse.json({ message: "Unauthenticated" }, { status: 401 });
-
-const { data, error } = await getSupabaseAdmin()
-  .from("your_table")
-  .select("id, name")
-  .eq("user_id", user.id);
-
-if (error) throw error;
+```sql
+update public.users set role='ADMIN' where email='owner@example.com';
 ```
 
-Before moving production data, create a PostgreSQL schema that matches the active
-MySQL migrations, choose whether Supabase Auth or the existing custom auth owns
-identity, then migrate one bounded data domain at a time. The legacy
-`database/migrations/001_initial.sql` is not currently equivalent to the active
-MySQL schema and should not be treated as a drop-in production migration.
+The files under `database/migrations` and `database/server/provision.mysql.sql.example` are retained only as historical MySQL migration artifacts. Do not run them for the Supabase deployment.
