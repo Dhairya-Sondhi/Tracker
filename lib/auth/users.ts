@@ -1,10 +1,11 @@
 import { createSupabaseServerClient,getSupabaseAdmin } from "@/lib/supabase/server";
 import type { SafeUser,UserRole } from "@/lib/auth/types";
+import { normalizeEmailInput } from "@/lib/auth/validation";
 
 type UserRow={id:number;auth_user_id:string;email:string;display_name:string|null;role:UserRole;is_active:boolean;session_version:number;created_at:string};
-const normalizeEmail=(email:string)=>email.trim().toLowerCase();
 const safe=(row:UserRow):SafeUser=>({id:Number(row.id),email:row.email,displayName:row.display_name,role:row.role,isActive:Boolean(row.is_active),sessionVersion:Number(row.session_version),createdAt:new Date(row.created_at)});
 export class DuplicateEmailError extends Error{}
+export class InvalidEmailError extends Error{}
 export class InvalidCredentialsError extends Error{}
 export class DisabledAccountError extends Error{}
 
@@ -14,9 +15,9 @@ async function profileForAuthId(authUserId:string){
 }
 
 export async function createUser(input:{displayName:string;email:string;password:string}){
- const supabase=await createSupabaseServerClient(),email=normalizeEmail(input.email),displayName=input.displayName.trim();
+ const supabase=await createSupabaseServerClient(),email=normalizeEmailInput(input.email),displayName=input.displayName.trim();
  const {data,error}=await supabase.auth.signUp({email,password:input.password,options:{data:{display_name:displayName,timezone:"Asia/Kolkata"}}});
- if(error){if(/already registered|already exists/i.test(error.message))throw new DuplicateEmailError();throw error}
+ if(error){if(error.code==="email_address_invalid")throw new InvalidEmailError();if(/already registered|already exists/i.test(error.message))throw new DuplicateEmailError();throw error}
  if(!data.user)throw new Error("SUPABASE_SIGNUP_MISSING_USER");
  const profile=await profileForAuthId(data.user.id);if(!profile)throw new Error("SUPABASE_PROFILE_TRIGGER_FAILED");
  return {...profile,emailConfirmationRequired:!data.session};
@@ -24,7 +25,7 @@ export async function createUser(input:{displayName:string;email:string;password
 
 export async function authenticateUser(emailInput:string,password:string){
  const supabase=await createSupabaseServerClient();
- const {data,error}=await supabase.auth.signInWithPassword({email:normalizeEmail(emailInput),password});
+ const {data,error}=await supabase.auth.signInWithPassword({email:normalizeEmailInput(emailInput),password});
  if(error||!data.user)throw new InvalidCredentialsError();
  const user=await profileForAuthId(data.user.id);if(!user)throw new InvalidCredentialsError();
  if(!user.isActive){await supabase.auth.signOut();throw new DisabledAccountError()}

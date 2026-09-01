@@ -2,9 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import { signUpSchema } from "../lib/auth/validation";
 
 const root=process.cwd();
 const schema=fs.readFileSync(path.join(root,"database","supabase","001_vlocity.sql"),"utf8");
+
+test("email input normalizes an accidental escaped at-sign",()=>{
+ const parsed=signUpSchema.parse({displayName:"Alex",email:" Alex\\@Gmail.com ",password:"password123"});
+ assert.equal(parsed.email,"alex@gmail.com");
+});
 
 test("Supabase schema preserves authentication and isolation invariants",()=>{
  assert.match(schema,/references auth\.users\(id\) on delete cascade/i);

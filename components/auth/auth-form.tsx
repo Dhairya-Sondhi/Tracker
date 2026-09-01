@@ -51,7 +51,7 @@ export function AuthForm({ mode,notice }: { mode: Mode;notice?:string }) {
 function safeError(mode: Mode, status: number, message?: unknown) {
   if (mode === "signin" && status === 401) return "Email or password is incorrect.";
   if (mode === "signup" && status === 409) return "An account with this email already exists.";
-  const allowed = ["Check your name, email, and password.", "Enter a valid email and password.", "This account is currently disabled."];
+  const allowed = ["Check your name, email, and password.", "Enter a valid email address.", "Enter a valid email and password.", "This account is currently disabled."];
   return typeof message === "string" && allowed.includes(message) ? message : serverError(mode);
 }
 

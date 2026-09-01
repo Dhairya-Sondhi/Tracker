@@ -1,8 +1,9 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { normalizeEmailInput } from "@/lib/auth/validation";
 
 export async function requestPasswordReset(emailInput:string){
  const supabase=await createSupabaseServerClient();const base=(process.env.APP_URL||"http://localhost:3000").replace(/\/$/,"");
- const {error}=await supabase.auth.resetPasswordForEmail(emailInput.trim().toLowerCase(),{redirectTo:`${base}/api/auth/callback?next=/reset-password`});
+ const {error}=await supabase.auth.resetPasswordForEmail(normalizeEmailInput(emailInput),{redirectTo:`${base}/api/auth/callback?next=/reset-password`});
  if(error)throw error;return null;
 }
 export async function resetPassword(password:string){
