@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect,useState } from "react";
+import { useEffect,useRef,useState } from "react";
 import Link from "next/link";
 import { usePathname,useRouter } from "next/navigation";
 import { BarChart3,ChevronRight,LogOut,Settings,ShieldCheck,Sparkles,SunMoon,UserRound } from "lucide-react";
@@ -10,9 +10,9 @@ import { VlocityMark } from "@/components/brand/vlocity-logo";
 const nav=[{label:"Today",href:"/today",icon:Sparkles},{label:"Dashboard",href:"/dashboard",icon:BarChart3}],mobileNav=[...nav,{label:"Settings",href:"/settings",icon:Settings}];
 type Account={displayName:string|null;email:string;role:"ADMIN"|"USER"};
 
-export function AppShell({children}:{children:React.ReactNode}){
- const pathname=usePathname(),router=useRouter(),[account,setAccount]=useState<Account|null>(null),[menu,setMenu]=useState(false);
- useEffect(()=>{fetch("/api/auth/me",{cache:"no-store"}).then(response=>response.ok?response.json():null).then(setAccount).catch(()=>{})},[]);
+export function AppShell({children,accountSource="self"}:{children:React.ReactNode;accountSource?:"self"|"children"}){
+ const pathname=usePathname(),router=useRouter(),[account,setAccount]=useState<Account|null>(null),[menu,setMenu]=useState(false),accountResolved=useRef(false);
+ useEffect(()=>{const receive=(event:Event)=>{accountResolved.current=true;setAccount((event as CustomEvent<Account>).detail)};window.addEventListener("account:loaded",receive);let cancelled=false;const timer=setTimeout(()=>{if(!accountResolved.current)fetch("/api/auth/me",{cache:"no-store"}).then(response=>response.ok?response.json():null).then(value=>{if(!cancelled&&value){accountResolved.current=true;setAccount(value)}}).catch(()=>{})},accountSource==="children"?10000:0);return()=>{cancelled=true;clearTimeout(timer);window.removeEventListener("account:loaded",receive)}},[accountSource]);
  useEffect(()=>{const close=(event:KeyboardEvent)=>event.key==="Escape"&&setMenu(false);window.addEventListener("keydown",close);return()=>window.removeEventListener("keydown",close)},[]);
  const name=account?.displayName||account?.email.split("@")[0]||"Account",initials=name.split(/\s+/).map(part=>part[0]).join("").slice(0,2).toUpperCase();
  function cycleTheme(){const current=document.documentElement.dataset.theme==="dark"?"dark":"light",next=current==="dark"?"light":"dark";localStorage.setItem("form-theme",next);document.documentElement.dataset.theme=next}

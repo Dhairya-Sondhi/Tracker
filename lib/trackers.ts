@@ -22,14 +22,21 @@ export async function ensureStarterTrackers(userId:number){
 type TrackerRow={id:number;name:string;detail:string;type:string;target_value:number|null;unit:string};
 type EntryRow={tracker_id:number;entry_date:string;numeric_value:number|null;boolean_value:boolean|null;status:string};
 export async function getUserTrackers(userId:number){
- await ensureStarterTrackers(userId);const admin=getSupabaseAdmin(),today=todayInIndia();
- const [{data:trackerRows,error:trackerError},{data:entryRows,error:entryError}]=await Promise.all([
-  admin.from("trackers").select("id,name,detail,type,target_value,unit").eq("user_id",userId).eq("is_archived",false).order("sort_order").order("id"),
-  admin.from("tracker_entries").select("tracker_id,entry_date,numeric_value,boolean_value,status").eq("user_id",userId).gte("entry_date",shift(today,-90)).order("entry_date"),
- ]);
+ const admin=getSupabaseAdmin(),today=todayInIndia();
+ const entriesPromise=admin.from("tracker_entries").select("tracker_id,entry_date,numeric_value,boolean_value,status").eq("user_id",userId).gte("entry_date",shift(today,-90)).order("entry_date");
+ let {data:trackerRows,error:trackerError}=await admin.from("trackers").select("id,name,detail,type,target_value,unit").eq("user_id",userId).eq("is_archived",false).order("sort_order").order("id");
+ if(trackerError)throw trackerError;
+ if(!trackerRows?.length){await ensureStarterTrackers(userId);const retry=await admin.from("trackers").select("id,name,detail,type,target_value,unit").eq("user_id",userId).eq("is_archived",false).order("sort_order").order("id");trackerRows=retry.data;trackerError=retry.error}
+ const {data:entryRows,error:entryError}=await entriesPromise;
  if(trackerError)throw trackerError;if(entryError)throw entryError;
  const entries=(entryRows||[]) as EntryRow[];
  return ((trackerRows||[]) as TrackerRow[]).map(row=>{const history=entries.filter(entry=>Number(entry.tracker_id)===Number(row.id)).map(entry=>({date:entry.entry_date,status:dbStatusToUi[entry.status]||"none",value:Number(entry.numeric_value??(entry.boolean_value?1:0))}));const current=history.find(entry=>entry.date===today);return {id:Number(row.id),name:row.name,detail:row.detail,value:current?.value||0,target:Number(row.target_value||1),unit:row.unit,kind:kind(row.type),status:current?.status||"none",history}});
+}
+
+export async function updateTrackerDefinition(userId:number,trackerId:number,input:{name:string;detail:string;kind:TrackerKind;target:number;unit:string}){
+ const admin=getSupabaseAdmin(),type=input.kind==="boolean"?"BOOLEAN":input.kind==="duration"?"DURATION":input.kind==="rating"?"RATING":"NUMBER";
+ const {data,error}=await admin.from("trackers").update({name:input.name,detail:input.detail,type,target_value:input.target,unit:input.unit}).eq("id",trackerId).eq("user_id",userId).eq("is_archived",false).select("id").maybeSingle<{id:number}>();
+ if(error)throw error;if(!data)throw new Error("TRACKER_NOT_FOUND");return {id:Number(data.id),...input};
 }
 
 export async function createTracker(userId:number,input:{name:string;detail:string;kind:TrackerKind;target:number;unit:string}){

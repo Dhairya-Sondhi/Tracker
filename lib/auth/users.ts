@@ -46,8 +46,8 @@ export async function findUserById(id:number){
 }
 
 export async function requireUser(){
- const supabase=await createSupabaseServerClient();const {data,error}=await supabase.auth.getUser();
- if(error||!data.user)return null;const user=await profileForAuthId(data.user.id);return user?.isActive?user:null;
+ const supabase=await createSupabaseServerClient();const {data,error}=await supabase.auth.getClaims();
+ const authUserId=data?.claims?.sub;if(error||typeof authUserId!=="string")return null;const user=await profileForAuthId(authUserId);return user?.isActive?user:null;
 }
 export async function requireRole(role:UserRole){const user=await requireUser();return user?.role===role?user:null}
 export async function userCounts(){const admin=getSupabaseAdmin();const [{count:total},{count:active},{count:admins}]=await Promise.all([admin.from("users").select("id",{head:true,count:"exact"}),admin.from("users").select("id",{head:true,count:"exact"}).eq("is_active",true),admin.from("users").select("id",{head:true,count:"exact"}).eq("role","ADMIN")]);return {total:total||0,active:active||0,admins:admins||0}}
