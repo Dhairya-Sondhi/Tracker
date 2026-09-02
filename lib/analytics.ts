@@ -14,7 +14,7 @@ const datesEndingToday=(days:number)=>{const today=indiaDateKey();return Array.f
 const weight=(status:string)=>status==="COMPLETE"?1:status==="PARTIAL"?.5:0;
 
 export async function getUserAnalytics(userId:number,rangeDays:AnalyticsPeriod):Promise<AnalyticsSnapshot>{
- const admin=getSupabaseAdmin(),today=indiaDateKey(),queryStart=shiftDate(today,-Math.max(729,rangeDays*2-1));
+ const admin=getSupabaseAdmin(),today=indiaDateKey(),queryStart=shiftDate(today,-Math.max(364,rangeDays*2-1));
  const [trackerResult,entryResult,planResult]=await Promise.all([
   admin.from("trackers").select("id,name").eq("user_id",userId).eq("is_archived",false).order("sort_order").order("id"),
   admin.from("tracker_entries").select("tracker_id,entry_date,status").eq("user_id",userId).gte("entry_date",queryStart).lte("entry_date",today),
