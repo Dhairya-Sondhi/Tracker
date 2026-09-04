@@ -14,12 +14,13 @@ const contracts={
  user_settings:"user_id,theme,default_planning_view,week_start_day,animations_enabled,compact_mode,timezone,email_digest,weekly_review_reminder,daily_reminder_time",
  admin_audit_logs:"id,actor_user_id,target_user_id,action,metadata,created_at",
  auth_rate_limits:"scope,key_hash,window_started_at,attempts,blocked_until",
+ notification_deliveries:"id,user_id,kind,period_key,status,attempts,provider_message_id,last_error,sent_at,created_at,updated_at",
 };
 for(const [table,columns] of Object.entries(contracts)){const {error}=await client.from(table).select(columns,{head:true,count:"exact"}).limit(1);if(error)throw new Error(`${table}: ${error.message}`)}
 const schemaResponse=await fetch(`${env.SUPABASE_URL.replace(/\/$/,"")}/rest/v1/`,{headers:{apikey:env.SUPABASE_SECRET_KEY,Authorization:`Bearer ${env.SUPABASE_SECRET_KEY}`,Accept:"application/openapi+json"}});
 if(!schemaResponse.ok)throw new Error(`PostgREST schema discovery failed with HTTP ${schemaResponse.status}.`);
 const openApi=await schemaResponse.json();
-const functions=["consume_auth_rate_limit","replace_weekly_plan","update_managed_user","update_user_settings"];
+const functions=["consume_auth_rate_limit","replace_weekly_plan","update_managed_user","update_user_settings","claim_notification_delivery"];
 const missingFunctions=functions.filter(name=>!openApi.paths?.[`/rpc/${name}`]);
 if(missingFunctions.length)throw new Error(`Missing database functions: ${missingFunctions.join(", ")}`);
 process.stdout.write(`Supabase smoke check passed for ${Object.keys(contracts).length} table contracts and ${functions.length} database functions.\n`);

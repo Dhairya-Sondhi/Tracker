@@ -17,9 +17,11 @@ test("Supabase schema preserves authentication and isolation invariants",()=>{
  assert.match(schema,/create trigger on_auth_user_created/i);
  assert.match(schema,/alter table public\.tracker_entries enable row level security/i);
  assert.match(schema,/create policy entries_owner/i);
+ assert.match(schema,/alter table public\.notification_deliveries enable row level security/i);
  assert.match(schema,/perform id from public\.users where role='ADMIN' and is_active[\s\S]*for update/i);
  assert.match(schema,/raise exception 'LAST_ADMIN'/i);
  assert.match(schema,/revoke all on function public\.update_managed_user[\s\S]*from public,anon,authenticated/i);
+ assert.match(schema,/revoke all on function public\.claim_notification_delivery[\s\S]*from public,anon,authenticated/i);
 });
 
 test("runtime source has no legacy MySQL or custom-token dependencies",()=>{
